@@ -48,24 +48,22 @@ def is_epc_like(value):
 
 def read_file_flexible(file, nrows=None):
     try:
-        with open(file, 'r', encoding='utf-8') as f:
-            sample = f.read(2048)
-            dialect = csv.Sniffer().sniff(sample)
-        df = pd.read_csv(file, delimiter=dialect.delimiter, skiprows=3, nrows=nrows)
-        if df.columns.str.contains("//").any():
-            df = pd.read_csv(file, delimiter=dialect.delimiter, header=None, nrows=nrows)
+        # Try comma-delimited first
+        df = pd.read_csv(file, delimiter=',', skiprows=3, on_bad_lines='skip', nrows=nrows)
+        if df.empty or len(df.columns) <= 1:
+            raise pd.errors.EmptyDataError("Likely wrong delimiter or empty after skip.")
+        return df
     except Exception:
         try:
-            df = pd.read_csv(file, delimiter=',', skiprows=3, on_bad_lines='skip', nrows=nrows)
-        except Exception:
-            df = pd.read_csv(file, delimiter=',', header=None, on_bad_lines='skip', nrows=nrows)
+            # Try tab-delimited fallback
+            df = pd.read_csv(file, delimiter='\t', skiprows=3, on_bad_lines='skip', nrows=nrows)
+            if df.empty:
+                raise pd.errors.EmptyDataError("Fallback also empty.")
+            return df
+        except Exception as e:
+            print(f"❌ Failed to read file {file}: {e}")
+            return pd.DataFrame()  # Return empty df so rest of code can skip cleanly
 
-    for i, row in df.iterrows():
-        if row.astype(str).str.upper().str.contains("TAG").any():
-            df.columns = df.iloc[i].values
-            df = df.iloc[i+1:].reset_index(drop=True)
-            break
-    return df
 
 def load_batch(files):
     preview_df = read_file_flexible(files[0], nrows=10)
