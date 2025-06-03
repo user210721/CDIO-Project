@@ -72,7 +72,12 @@ def load_batch(files):
     preview_text = "\n".join(preview_rows)
 
     columns_list = preview_df.columns.tolist()
+    if not columns_list:
+        print(f"❌ No usable columns found in: {files[0]}")
+        return  # Skip this batch
+
     epc_col = choose_epc_column_gui([str(col) for col in columns_list], Path(files[0]).name, preview_text)
+
     epc_index = columns_list.index(epc_col)
 
     batch_epcs = []
@@ -89,7 +94,13 @@ def load_batch(files):
         df = df[[selected_col]].dropna()
         df.columns = ["EPC"]
         df = df[df["EPC"].apply(is_epc_like)]
-        df["Detected Location"] = Path(file).stem
+
+        # Extract metadata from filename
+        parts = Path(file).stem.split("_")
+        df["Reader"] = parts[0] if len(parts) > 0 else "Unknown"
+        df["Location"] = parts[1] if len(parts) > 1 else "Unknown"
+        df["File Name"] = Path(file).stem
+
         batch_epcs.append(df)
 
     if batch_epcs:
@@ -115,9 +126,14 @@ if __name__ == "__main__":
         if confirm_merge:
             final_merged = pd.concat(all_batches, ignore_index=True)
             final_merged = final_merged.drop_duplicates(subset="EPC").sort_values("EPC")
-            final_merged.to_excel("Merged_Cleaned_EPCs.xlsx", index=False)
+            from datetime import datetime
+            os.makedirs("merged", exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"merged/Merged_Cleaned_EPCs_{timestamp}.xlsx"
+            final_merged.to_excel(filename, index=False)
+
             print("✅ All batches merged and saved to 'Merged_Cleaned_EPCs.xlsx'")
-        else:
+        else:   
             print("❌ Merge cancelled. No file was saved.")
     else:
         print("❌ No EPC data was merged.")

@@ -1,0 +1,59 @@
+# EPC Final Merger for Cleaned/Merged Files
+# Combines cleaned Excel files that already contain EPC, Reader, Location columns
+
+import pandas as pd
+import os
+from pathlib import Path
+import tkinter as tk
+from tkinter import filedialog, simpledialog, messagebox
+from datetime import datetime
+
+def select_excel_files():
+    root = tk.Tk()
+    root.withdraw()
+    file_paths = filedialog.askopenfilenames(
+        title="Select Merged EPC Excel Files",
+        filetypes=[("Excel Files", "*.xlsx *.xls")]
+    )
+    return list(file_paths)
+
+def merge_cleaned_files(files):
+    dfs = []
+    for file in files:
+        try:
+            df = pd.read_excel(file)
+            if "EPC" not in df.columns:
+                print(f"❌ Skipping {file} — no EPC column found.")
+                continue
+            dfs.append(df)
+            print(f"✅ Loaded: {file} ({len(df)} rows)")
+        except Exception as e:
+            print(f"❌ Error reading {file}: {e}")
+
+    if not dfs:
+        print("❌ No valid files to merge.")
+        return
+
+    combined = pd.concat(dfs, ignore_index=True)
+    combined = combined.drop_duplicates(subset="EPC").sort_values("EPC")
+
+    # Ask for output file name
+    root = tk.Tk()
+    root.withdraw()
+    os.makedirs("merged_final", exist_ok=True)
+    default_name = f"Final_Merged_EPCs_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    output_name = simpledialog.askstring("Save As", "Enter name for final merged file:", initialvalue=default_name)
+
+    if output_name:
+        save_path = os.path.join("merged_final", f"{output_name}.xlsx")
+        combined.to_excel(save_path, index=False)
+        print(f"✅ Final merged file saved to: {save_path}")
+    else:
+        print("❌ Save cancelled.")
+
+if __name__ == "__main__":
+    selected_files = select_excel_files()
+    if selected_files:
+        merge_cleaned_files(selected_files)
+    else:
+        print("❌ No files selected.")
