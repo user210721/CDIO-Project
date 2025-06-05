@@ -50,8 +50,7 @@ A Python-based tool for merging RFID scan files and reconciling EPCs across diff
   - `Format_RFID` (tag tables)
   - `Format_Raw_EPC` (simple EPC lists)
   - `Format_Unknown`
-- Automatically deletes completely empty files (0 KB or visually blank)
-- ⚠️ Only needed for **inconsistent readers** (e.g. fixed readers); handhelds are consistent and don't require sorting
+- ⚠️ Only needed for readers that generate both 'unique tag files' and all 'tags scanned files', not needed for current handheld reader
 
 ---
 
@@ -100,7 +99,7 @@ To group files by format before merging:
 ```bash
 python format_based_sorter.py
 ```
-(Only necessary for mixed-format readers like fixed readers)
+(Only necessary for readers that generate both unique tag files and all tags scanned files)
 
 ---
 
