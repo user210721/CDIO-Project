@@ -48,7 +48,7 @@ def is_epc_like(value):
 
 def read_file_flexible(file, nrows=None):
     try:
-        # Read all rows to manually detect the header
+        # Try to detect a header row
         with open(file, 'r', encoding='utf-8') as f:
             lines = f.readlines()
 
@@ -59,15 +59,18 @@ def read_file_flexible(file, nrows=None):
                 header_index = i
                 break
 
-        if header_index is None:
-            raise ValueError("❌ Could not detect a valid header row.")
+        if header_index is not None:
+            df = pd.read_csv(file, delimiter=',', skiprows=header_index, on_bad_lines='skip', nrows=nrows)
+        else:
+            print(f"⚠️ No header found in {file}, treating as raw EPC list.")
+            df = pd.read_csv(file, delimiter=',', header=None, names=["EPC"], on_bad_lines='skip', nrows=nrows)
 
-        df = pd.read_csv(file, delimiter=',', skiprows=header_index, on_bad_lines='skip', nrows=nrows)
         return df
 
     except Exception as e:
         print(f"❌ Failed to read file {file}: {e}")
         return pd.DataFrame()
+
 
 
 
@@ -90,12 +93,13 @@ def load_batch(files):
     root.withdraw()
     prefix_filters = []
     while True:
-        prefix = simpledialog.askstring ("Filter EPCs", "Enter an EPC prefix to include (e.g. 03 or 01 or E888 etc.).\nPress Enter without typing to finish.")
-
+        prefix = simpledialog.askstring("Filter EPCs", "Enter EPC prefix(es) to include (e.g. 01, 03).\nPress Enter without typing to finish.")
         if prefix:
-            prefix_filters.append(prefix.strip())
+            parts = [p.strip() for p in prefix.split(",") if p.strip()]
+            prefix_filters.extend(parts)
         else:
             break
+
 
     batch_epcs = []
     for file in files:

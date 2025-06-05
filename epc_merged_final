@@ -23,11 +23,13 @@ def merge_cleaned_files(files):
     root.withdraw()
     prefix_filters = []
     while True:
-        prefix = simpledialog.askstring("Filter EPCs", "Enter an EPC prefix to include (e.g. 03 or 01 or E888 etc.).\nPress Enter without typing to finish.")
+        prefix = simpledialog.askstring("Filter EPCs", "Enter EPC prefix(es) to include (e.g. 01, 03).\nPress Enter without typing to finish.")
         if prefix:
-            prefix_filters.append(prefix.strip())
+            parts = [p.strip() for p in prefix.split(",") if p.strip()]
+            prefix_filters.extend(parts)
         else:
             break
+
 
     dfs = []
     for file in files:
