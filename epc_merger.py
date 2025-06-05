@@ -48,21 +48,27 @@ def is_epc_like(value):
 
 def read_file_flexible(file, nrows=None):
     try:
-        # Try comma-delimited first
-        df = pd.read_csv(file, delimiter=',', skiprows=3, on_bad_lines='skip', nrows=nrows)
-        if df.empty or len(df.columns) <= 1:
-            raise pd.errors.EmptyDataError("Likely wrong delimiter or empty after skip.")
+        # Read all rows to manually detect the header
+        with open(file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        header_index = None
+        for i, line in enumerate(lines):
+            lowered = line.lower()
+            if ("epc" in lowered or "tag" in lowered) and "count" in lowered:
+                header_index = i
+                break
+
+        if header_index is None:
+            raise ValueError("❌ Could not detect a valid header row.")
+
+        df = pd.read_csv(file, delimiter=',', skiprows=header_index, on_bad_lines='skip', nrows=nrows)
         return df
-    except Exception:
-        try:
-            # Try tab-delimited fallback
-            df = pd.read_csv(file, delimiter='\t', skiprows=3, on_bad_lines='skip', nrows=nrows)
-            if df.empty:
-                raise pd.errors.EmptyDataError("Fallback also empty.")
-            return df
-        except Exception as e:
-            print(f"❌ Failed to read file {file}: {e}")
-            return pd.DataFrame()  # Return empty df so rest of code can skip cleanly
+
+    except Exception as e:
+        print(f"❌ Failed to read file {file}: {e}")
+        return pd.DataFrame()
+
 
 
 def load_batch(files):
@@ -80,6 +86,17 @@ def load_batch(files):
 
     epc_index = columns_list.index(epc_col)
 
+    root = tk.Tk()
+    root.withdraw()
+    prefix_filters = []
+    while True:
+        prefix = simpledialog.askstring ("Filter EPCs", "Enter an EPC prefix to include (e.g. 03 or 01 or E888 etc.).\nPress Enter without typing to finish.")
+
+        if prefix:
+            prefix_filters.append(prefix.strip())
+        else:
+            break
+
     batch_epcs = []
     for file in files:
         print(f"Reading file: {file}")
@@ -94,6 +111,10 @@ def load_batch(files):
         df = df[[selected_col]].dropna()
         df.columns = ["EPC"]
         df = df[df["EPC"].apply(is_epc_like)]
+
+        if prefix_filters:
+            df = df[df["EPC"].str.startswith(tuple(prefix_filters))]
+
 
         # Extract metadata from filename
         parts = Path(file).stem.split("_")
@@ -132,7 +153,31 @@ if __name__ == "__main__":
             filename = f"merged/Merged_Cleaned_EPCs_{timestamp}.xlsx"
             final_merged.to_excel(filename, index=False)
 
-            print("✅ All batches merged and saved to 'Merged_Cleaned_EPCs.xlsx'")
+            # Auto-adjust Excel column widths
+            import openpyxl
+            from openpyxl.utils import get_column_letter
+
+            try:
+                wb = openpyxl.load_workbook(filename)
+                ws = wb.active
+
+                for col in ws.columns:
+                    max_length = 0
+                    column = col[0].column  # 1-based index
+                    for cell in col:
+                        try:
+                            if cell.value:
+                                max_length = max(max_length, len(str(cell.value)))
+                        except:
+                            pass
+                    ws.column_dimensions[get_column_letter(column)].width = max_length + 2
+
+                wb.save(filename)
+                print(f"✅ All batches merged and saved to '{filename}'")
+
+            except PermissionError:
+                print(f"❌ Cannot save. Please close the file '{filename}' and try again.")
+
         else:   
             print("❌ Merge cancelled. No file was saved.")
     else:

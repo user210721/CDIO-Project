@@ -18,6 +18,17 @@ def select_excel_files():
     return list(file_paths)
 
 def merge_cleaned_files(files):
+    # Ask for EPC prefix filters
+    root = tk.Tk()
+    root.withdraw()
+    prefix_filters = []
+    while True:
+        prefix = simpledialog.askstring("Filter EPCs", "Enter an EPC prefix to include (e.g. 03 or 01 or E888 etc.).\nPress Enter without typing to finish.")
+        if prefix:
+            prefix_filters.append(prefix.strip())
+        else:
+            break
+
     dfs = []
     for file in files:
         try:
@@ -25,8 +36,12 @@ def merge_cleaned_files(files):
             if "EPC" not in df.columns:
                 print(f"❌ Skipping {file} — no EPC column found.")
                 continue
+
+            if prefix_filters:
+                df = df[df["EPC"].astype(str).str.startswith(tuple(prefix_filters))]
+
             dfs.append(df)
-            print(f"✅ Loaded: {file} ({len(df)} rows)")
+            print(f"✅ Loaded: {file} ({len(df)} rows after filtering)")
         except Exception as e:
             print(f"❌ Error reading {file}: {e}")
 
@@ -47,7 +62,28 @@ def merge_cleaned_files(files):
     if output_name:
         save_path = os.path.join("merged_final", f"{output_name}.xlsx")
         combined.to_excel(save_path, index=False)
+
+        # Auto-adjust column widths
+        import openpyxl
+        from openpyxl.utils import get_column_letter
+
+        wb = openpyxl.load_workbook(save_path)
+        ws = wb.active
+
+        for col in ws.columns:
+            max_length = 0
+            column = col[0].column  # 1-based index
+            for cell in col:
+                try:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                except:
+                    pass
+            ws.column_dimensions[get_column_letter(column)].width = max_length + 2
+
+        wb.save(save_path)
         print(f"✅ Final merged file saved to: {save_path}")
+
     else:
         print("❌ Save cancelled.")
 
