@@ -53,9 +53,6 @@ def get_format_signature(file_path):
 
 
 
-
-
-
 def group_and_sort_files():
     root = tk.Tk()
     root.withdraw()

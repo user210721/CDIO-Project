@@ -30,6 +30,12 @@ def merge_cleaned_files(files):
         else:
             break
 
+    # Ask for EPC character limit
+    char_limit = simpledialog.askinteger(
+        "Truncate EPCs",
+        "Enter number of characters to keep from each EPC (e.g. 24).\nLeave blank to use full EPCs:"
+    )
+
 
     dfs = []
     for file in files:
@@ -39,8 +45,14 @@ def merge_cleaned_files(files):
                 print(f"❌ Skipping {file} — no EPC column found.")
                 continue
 
+            df["EPC"] = df["EPC"].astype(str)
+
+            if char_limit:
+                df["EPC"] = df["EPC"].str[:char_limit]
+
             if prefix_filters:
-                df = df[df["EPC"].astype(str).str.startswith(tuple(prefix_filters))]
+                df = df[df["EPC"].str.startswith(tuple(prefix_filters))]
+
 
             dfs.append(df)
             print(f"✅ Loaded: {file} ({len(df)} rows after filtering)")
@@ -52,7 +64,16 @@ def merge_cleaned_files(files):
         return
 
     combined = pd.concat(dfs, ignore_index=True)
-    combined = combined.drop_duplicates(subset="EPC").sort_values("EPC")
+    combined = combined.sort_values("EPC")
+
+    if "Location" in combined.columns:
+        combined["Location"] = combined.groupby("EPC")["Location"].transform(lambda x: ', '.join(sorted(set(x))))
+
+    if "Reader" in combined.columns:
+        combined["Reader"] = combined.groupby("EPC")["Reader"].transform(lambda x: ', '.join(sorted(set(x))))
+
+    combined = combined.drop_duplicates(subset="EPC")
+
 
     # Ask for output file name
     root = tk.Tk()

@@ -90,7 +90,7 @@ def load_batch(files):
     epc_index = columns_list.index(epc_col)
 
     root = tk.Tk()
-    root.withdraw()
+    root.withdraw() 
     prefix_filters = []
     while True:
         prefix = simpledialog.askstring("Filter EPCs", "Enter EPC prefix(es) to include (e.g. 01, 03).\nPress Enter without typing to finish.")
@@ -99,6 +99,14 @@ def load_batch(files):
             prefix_filters.extend(parts)
         else:
             break
+
+    # Ask for EPC character limit (after prefix loop finishes)
+    char_limit = simpledialog.askinteger(
+        "Truncate EPCs",
+        "Enter number of characters to keep from each EPC (e.g. 24).\nLeave blank to use full EPCs:"
+    )
+
+
 
 
     batch_epcs = []
@@ -114,6 +122,12 @@ def load_batch(files):
         selected_col = df.columns[epc_index]
         df = df[[selected_col]].dropna()
         df.columns = ["EPC"]
+
+        # Truncate EPCs if a limit is set
+        if char_limit:
+            df["EPC"] = df["EPC"].astype(str).str[:char_limit]
+
+
         df = df[df["EPC"].apply(is_epc_like)]
 
         if prefix_filters:
