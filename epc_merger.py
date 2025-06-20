@@ -146,6 +146,21 @@ def load_batch(files):
         merged_batch = pd.concat(batch_epcs, ignore_index=True)
         all_batches.append(merged_batch)
         print(f"✅ Batch of {len(files)} files added.")
+
+                # ✅ Automatically mark folder as merged
+        folder_path = os.path.dirname(files[0])
+        parent = Path(folder_path).parent
+        current = Path(folder_path).name
+
+        if "✔" not in current:
+            new_name = current + " ✔"
+            try:
+                os.rename(folder_path, str(parent / new_name))
+                print(f"📁 Renamed folder to: {new_name}")
+            except Exception as e:
+                print(f"⚠️ Could not rename folder: {e}")
+
+
     else:
         print("⚠️ No valid EPC data found in this batch.")
 
