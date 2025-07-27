@@ -23,7 +23,10 @@ def merge_cleaned_files(files):
     root.withdraw()
     prefix_filters = []
     while True:
-        prefix = simpledialog.askstring("Filter EPCs", "Enter EPC prefix(es) to include (e.g. 01, 03).\nPress Enter without typing to finish.")
+        prefix = simpledialog.askstring(
+            "Filter EPCs", 
+            "Enter EPC prefix(es) to include (e.g. 01, 03).\nPress Enter without typing to finish."
+        )
         if prefix:
             parts = [p.strip() for p in prefix.split(",") if p.strip()]
             prefix_filters.extend(parts)
@@ -36,7 +39,6 @@ def merge_cleaned_files(files):
         "Enter number of characters to keep from each EPC (e.g. 24).\nLeave blank to use full EPCs:"
     )
 
-
     dfs = []
     for file in files:
         try:
@@ -47,12 +49,15 @@ def merge_cleaned_files(files):
 
             df["EPC"] = df["EPC"].astype(str)
 
+            # ✅ Shorten EPCs if they are too long
             if char_limit:
-                df["EPC"] = df["EPC"].str[:char_limit]
+                df["EPC"] = df["EPC"].apply(
+                    lambda x: x[:char_limit] if len(x) > char_limit else x
+                )
 
+            # Filter by prefixes if provided
             if prefix_filters:
                 df = df[df["EPC"].str.startswith(tuple(prefix_filters))]
-
 
             dfs.append(df)
             print(f"✅ Loaded: {file} ({len(df)} rows after filtering)")
@@ -66,21 +71,29 @@ def merge_cleaned_files(files):
     combined = pd.concat(dfs, ignore_index=True)
     combined = combined.sort_values("EPC")
 
+    # Combine unique Locations and Readers per EPC
     if "Location" in combined.columns:
-        combined["Location"] = combined.groupby("EPC")["Location"].transform(lambda x: ', '.join(sorted(set(x))))
+        combined["Location"] = combined.groupby("EPC")["Location"].transform(
+            lambda x: ', '.join(sorted(set(x)))
+        )
 
     if "Reader" in combined.columns:
-        combined["Reader"] = combined.groupby("EPC")["Reader"].transform(lambda x: ', '.join(sorted(set(x))))
+        combined["Reader"] = combined.groupby("EPC")["Reader"].transform(
+            lambda x: ', '.join(sorted(set(x)))
+        )
 
     combined = combined.drop_duplicates(subset="EPC")
-
 
     # Ask for output file name
     root = tk.Tk()
     root.withdraw()
     os.makedirs("merged_final", exist_ok=True)
     default_name = f"Final_Merged_EPCs_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    output_name = simpledialog.askstring("Save As", "Enter name for final merged file:", initialvalue=default_name)
+    output_name = simpledialog.askstring(
+        "Save As",
+        "Enter name for final merged file:",
+        initialvalue=default_name
+    )
 
     if output_name:
         save_path = os.path.join("merged_final", f"{output_name}.xlsx")

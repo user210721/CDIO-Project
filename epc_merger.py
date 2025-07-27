@@ -9,14 +9,35 @@ from tkinter import filedialog, simpledialog, messagebox
 
 all_batches = []
 
-def select_files():
+def select_files_or_folder():
     root = tk.Tk()
     root.withdraw()
-    file_paths = filedialog.askopenfilenames(
-        title="Select a Batch of RFID Scan Files",
-        filetypes=[("Excel/CSV", "*.xlsx *.xls *.csv")]
+
+    # Ask user to choose folder or files
+    choice = messagebox.askyesno(
+        "Select Folder?",
+        "Do you want to select a folder?\n(Yes = folder, No = individual files)"
     )
-    return list(file_paths)
+
+    if choice:
+        folder_path = filedialog.askdirectory(title="Select Folder to Search Files In")
+        if folder_path:
+            # Recursively find all Excel/CSV files in folder and subfolders
+            file_paths = []
+            for dirpath, _, filenames in os.walk(folder_path):
+                for filename in filenames:
+                    if filename.endswith((".xlsx", ".xls", ".csv")):
+                        file_paths.append(os.path.join(dirpath, filename))
+            return file_paths
+        else:
+            return []
+    else:
+        # Fall back to selecting individual files
+        file_paths = filedialog.askopenfilenames(
+            title="Select a Batch of RFID Scan Files",
+            filetypes=[("Excel/CSV", "*.xlsx *.xls *.csv")]
+        )
+        return list(file_paths)
 
 def choose_epc_column_gui(columns, filename, preview=None):
     root = tk.Tk()
@@ -71,9 +92,6 @@ def read_file_flexible(file, nrows=None):
         print(f"❌ Failed to read file {file}: {e}")
         return pd.DataFrame()
 
-
-
-
 def load_batch(files):
     preview_df = read_file_flexible(files[0], nrows=10)
     preview_df = preview_df.dropna(axis=1, how='all').dropna(axis=0, how='all')
@@ -106,9 +124,6 @@ def load_batch(files):
         "Enter number of characters to keep from each EPC (e.g. 24).\nLeave blank to use full EPCs:"
     )
 
-
-
-
     batch_epcs = []
     for file in files:
         print(f"Reading file: {file}")
@@ -125,14 +140,12 @@ def load_batch(files):
 
         # Truncate EPCs if a limit is set
         if char_limit:
-            df["EPC"] = df["EPC"].astype(str).str[:char_limit]
-
-
-        df = df[df["EPC"].apply(is_epc_like)]
+            df["EPC"] = df["EPC"].astype(str).apply(
+                 lambda x: x[:char_limit] if len(x) > char_limit else x
+    )
 
         if prefix_filters:
             df = df[df["EPC"].str.startswith(tuple(prefix_filters))]
-
 
         # Extract metadata from filename
         parts = Path(file).stem.split("_")
@@ -147,7 +160,7 @@ def load_batch(files):
         all_batches.append(merged_batch)
         print(f"✅ Batch of {len(files)} files added.")
 
-                # ✅ Automatically mark folder as merged
+        # ✅ Automatically mark folder as merged
         folder_path = os.path.dirname(files[0])
         parent = Path(folder_path).parent
         current = Path(folder_path).name
@@ -155,11 +168,10 @@ def load_batch(files):
         if "✔" not in current:
             new_name = current + " ✔"
             try:
-                os.rename(folder_path, str(parent / new_name))
+                os.rename(folder_path, str(parent / new_name))  
                 print(f"📁 Renamed folder to: {new_name}")
             except Exception as e:
                 print(f"⚠️ Could not rename folder: {e}")
-
 
     else:
         print("⚠️ No valid EPC data found in this batch.")
@@ -167,8 +179,9 @@ def load_batch(files):
 if __name__ == "__main__":
     print("Starting EPC Merger Tool (Batch Mode)...")
     while True:
-        selected_files = select_files()
+        selected_files = select_files_or_folder()
         if not selected_files:
+            print("❌ No files found or selected.")
             break
         load_batch(selected_files)
         add_more = messagebox.askyesno("Add Another Batch?", "Do you want to load another batch of files?")

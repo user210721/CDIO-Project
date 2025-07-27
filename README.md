@@ -1,6 +1,6 @@
-# EPC Merger Tool (v1.6)
+# EPC Merger & Comparison Tool (v2.0)
 
-A Python-based toolkit to streamline RFID stocktaking by merging EPC scan data, detecting duplicates, extracting metadata, and consolidating tagged item tracking across readers and locations.
+A complete Python-based toolkit for automating RFID stocktaking tasks—merging EPC scan data, renaming batches, sorting by format, comparing with master EPC databases, and generating clean reports across readers and locations.
 
 ---
 
@@ -8,45 +8,69 @@ A Python-based toolkit to streamline RFID stocktaking by merging EPC scan data, 
 
 ### 🧠 Intelligent Batch Merging (`epc_merger.py`)
 
-- Select multiple CSV/Excel files in **batches**
-- **Index-based EPC column selection** (select once per batch)
-- Consistent structure assumption within each batch
-- Supports **truncating EPCs** (e.g., first 24 characters)
-- Optional **prefix filtering** (e.g., only keep EPCs starting with `03`, `E888`)
+- Batch-select multiple CSV/Excel scan files
+- **Index-based EPC column selection** (choose once per batch)
+- Optional:
+  - **Prefix filtering** (e.g., only keep EPCs starting with `03`, `01`, etc.)
+  - **EPC truncation** (e.g., keep only first 24 characters)
 - Automatically extracts:
   - 📍 **Location**
-  - 🛁 **Reader**
+  - 📡 **Reader**
   - 📁 **Source file name**
-- ✅ **Auto-renames folder with a tick mark (✓)** after merging to indicate it is processed
-- Saves merged outputs to the `merged/` folder with timestamped filenames
+- ✅ Adds visual tick (✓) to folder name after processing
+- Saves merged outputs to `merged/` with timestamped filenames
 - Auto-adjusts Excel column widths
 
-### 🔄 Final Merger (`epc_merged_file_merger.py`)
+### 🔄 Final Cleaned File Merger (`epc_merged_final.py`)
 
-- Load previously merged files from `merged/`
-- Optional **EPC prefix filtering** and **truncation**
-- Detects **duplicate EPCs found at multiple locations or readers**:
-  - Combines locations/readers into a single cell (comma-separated)
-- Saves final output to the `merged_final/` folder
+- Merges cleaned Excel files from `merged/`
+- Consolidates duplicate EPCs found in multiple locations/readers
+- Combines metadata into comma-separated cells
+- Optional prefix filtering & truncation
+- Saves to `merged_final/` folder
 
-### 📂 Format-Based Sorting Tool
+### 📁 Format-Based Sorter (`format_based_sorter.py`)
 
-- Automatically sorts raw RFID scan files into folders based on format structure
-- Prevents batch errors by keeping similar file layouts together
-- ✅ Only needed for readers that generate **both unique tag files and all tags scanned files** (e.g., Fixed Readers)
+- Groups scan files into subfolders (`FormatGroup_X`) based on structure
+- Prevents merging errors by grouping similar formats
+- Only needed for **fixed readers** with multiple file types
+
+### 🏷️ Batch Renaming Tools
+
+- `epc_file_renamer.py`  
+  ↳ Select multiple files, preview one, apply uniform `Reader_Location.csv` naming
+
+- `2_file_renamer.py`  
+  ↳ Simple tool to add prefix text in front of filenames
+
+### 🧾 Master Database Comparison (`epc_master_comparison.py`)
+
+- Compares merged results against a full master EPC list
+- Adds columns:
+  - ✅ **Found**
+  - 📍 **Location Found**
+  - 📡 **Reader Used**
+- Generates summary:
+  - % of EPCs found
+  - Count of duplicates across locations
+- Output stored in `comparison_results/`
 
 ---
 
-## 🗂 File Structure
+## 🗂 Folder Structure
 
 ```
 /epc_merger_tool
-├── epc_merger.py                # Main raw scan merger (✓ folder renaming in v1.6)
-├── epc_merged_file_merger.py   # Final cleaned file merger
-├── format_sorter.py             # Sorts raw files by format
-├── merged/                      # Intermediate merged output files
-├── merged_final/                # Final consolidated output
-└── README.md                    # This file
+├── epc_merger.py                  # Batch merger for raw EPC scan files
+├── epc_merged_final.py            # Final cleaned EPC file merger
+├── format_based_sorter.py         # Sorts raw files by structure
+├── epc_master_comparison.py       # Compares merged data vs master EPC list
+├── epc_file_renamer.py            # File renamer with preview + pattern
+├── 2_file_renamer.py              # Quick prefix-based renamer
+├── merged/                        # Folder for intermediate merged files
+├── merged_final/                  # Folder for consolidated clean output
+├── comparison_results/            # Stores master comparison results
+└── README.md                      # This file
 ```
 
 ---
@@ -56,9 +80,9 @@ A Python-based toolkit to streamline RFID stocktaking by merging EPC scan data, 
 - Python 3.10+
 - `pandas`
 - `openpyxl`
-- `tkinter` (bundled with most Python distributions)
+- `tkinter` (included with most Python installations)
 
-Install dependencies (if needed):
+Install dependencies:
 
 ```bash
 pip install pandas openpyxl
@@ -68,28 +92,28 @@ pip install pandas openpyxl
 
 ## 🚀 How to Use
 
-### 1. Sort by Format (Fixed Readers Only)
+### 1. (Optional) Sort by Format
 
-> 📌 Skip if using handheld scanners — they output a consistent format.
-
-Run the format sorter:
+For fixed readers, run:
 
 ```bash
-python format_sorter.py
+python format_based_sorter.py
 ```
 
-This groups files with the same structure into subfolders in the same directory.
+Groups files with similar structure into subfolders.
 
 ---
 
 ### 2. Rename Files
 
-Use the EPC File Renamer (external script) to rename files consistently as:
+Choose one of the renaming scripts:
 
+```bash
+python epc_file_renamer.py   # Preview & apply formatted naming
+python 2_file_renamer.py     # Simple prefix-based batch renamer
 ```
-[Reader]_[Location]_x.csv
-e.g. FixedReader_GulDrive_1.csv
-```
+
+Ensure filenames follow the `Reader_Location.csv` pattern.
 
 ---
 
@@ -99,62 +123,70 @@ e.g. FixedReader_GulDrive_1.csv
 python epc_merger.py
 ```
 
-- Select files for each batch
-- Choose the EPC column once
-- Optionally filter by prefix or truncate EPCs
-- Add multiple batches
-- ✅ After processing, folder is renamed with a ✓ suffix
-- Save to `merged/`
+- Select raw scan files
+- Choose EPC column
+- Apply filtering/truncation if needed
+- Files are merged and saved to `merged/`
+- Folder will auto-rename with ✓ when done
 
 ---
 
-### 4. Run the Final Merger
+### 4. Merge Final Cleaned Files
 
 ```bash
-python epc_merged_file_merger.py
+python epc_merged_final.py
 ```
 
-- Select previously merged files
-- Optional filtering & truncation
-- Consolidates duplicate EPCs across locations/readers
-- Saves output to `merged_final/`
+- Combines cleaned EPC files from `merged/`
+- Detects duplicates across different readers/locations
+- Saves the output to `merged_final/`
 
 ---
 
-## 📌 Version History
+### 5. Compare with Master EPC List
 
-### ✅ v1.6 (Current)
+```bash
+python epc_master_comparison.py
+```
 
-- ✅ **Folder auto-renamed with ✓ suffix once batch is merged**
-- Ensures visual tracking of which batches are completed
-- Preserves all previous merging, filtering, and extraction features
+- Select merged final file and client master EPC list
+- Shows which EPCs were found, where, and by which reader
+- Adds Found, Location Found, and Reader Used columns
+- Summary results saved in `comparison_results/`
+
+---
+
+## 🧾 Version History
+
+### ✅ v2.0 (Current)
+
+- NEW: Master EPC comparison module (`epc_master_comparison.py`)
+- NEW: `comparison_results/` folder for results
+- NEW: Two file renamer tools added
+- Modular architecture: sort → rename → merge → compare
+- Folder ✓ renaming and auto Excel formatting retained
+
+### ✅ v1.6
+
+- Folder tick rename feature
+- Auto column sizing in Excel output
+- Timestamped file saving in `merged/`
 
 ### ✅ v1.5
 
-- Prefix filtering supports comma-separated values (`03, 01`)
-- EPC truncation (e.g. first 24 chars)
-- Duplicate location & reader detection merged into single cells
-- Final merger fully supports smart consolidation
-- Added format sorter for readers with mixed file types
-
-### ✅ v1.4
-
-- Added `format_sorter.py` to group files with same layout
-- EPC Renamer script (external) used for standardizing filenames
-- Visual cleanups and prompt clarifications
-
-### ✅ v1.3
-
-- Smart delimiter fallback (comma → tab)
-- Header detection instead of `csv.Sniffer()`
-- Faster file preview loading (10 rows)
-- Batch column position reuse
+- Prefix filtering and EPC truncation support
+- Final merge deduplication logic
+- Format sorter for batch cleanup
 
 ---
 
-## ✨ Future Plans
+## 📌 Future Plans
 
-- Master EPC vs scanned EPC comparison with full tick & summary
-- Visual dashboards: tag coverage %, tags per reader
-- PDF report generation
-- Develop GUI and convert project to an executable (EXE) file
+- 📊 Graph generation (adjustable X/Y axis)
+- 📋 Excel/PDF summary report export
+- 🖥 Convert tool to standalone **.exe** for easier distribution *(priority)*
+- 📖 Create illustrated user manual covering:
+  - Installation & setup
+  - Usage walkthrough
+  - File naming rules
+  - Troubleshooting guide
