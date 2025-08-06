@@ -132,11 +132,14 @@ def merge_cleaned_files(files):
 
             # Merge duplicates by EPC
             def merge_column(series):
-                values = sorted(set(
-                    str(i).strip() for i in series.dropna()
-                    if str(i).strip().lower() != "unknown" and str(i).strip() != ""
-                ))
-                return ", ".join(values) if values else "Unknown"
+                raw_values = series.dropna().astype(str)
+                all_parts = []
+                for val in raw_values:
+                    parts = [p.strip() for p in val.split(",") if p.strip().lower() != "unknown" and p.strip()]
+                    all_parts.extend(parts)
+                unique_sorted = sorted(set(all_parts))
+                return ", ".join(unique_sorted) if unique_sorted else "Unknown"
+
 
             agg_dict = {col: merge_column for col in all_columns if col != "EPC"}
             merged = combined.groupby("EPC", as_index=False).agg(agg_dict)

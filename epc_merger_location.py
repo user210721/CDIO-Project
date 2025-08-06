@@ -192,7 +192,20 @@ def save_and_exit():
             import openpyxl
             from openpyxl.utils import get_column_letter
 
-            final_merged = pd.concat(all_batches, ignore_index=True).drop_duplicates(subset="EPC").sort_values("EPC")
+            merged_all = pd.concat(all_batches, ignore_index=True)
+
+            # Group by EPC and combine all unique locations for each EPC
+            merged_grouped = (
+                merged_all.groupby("EPC")
+                .agg({
+                    "Location": lambda x: ", ".join(sorted(set(x))),
+                    "File Name": lambda x: ", ".join(sorted(set(x)))  # Optional: also merge file names
+                })
+                .reset_index()
+                .sort_values("EPC")
+            )
+            final_merged = merged_grouped
+
             os.makedirs("merged", exist_ok=True)
             filename = f"merged/Merged_EPCs_LocationOnly_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
             final_merged.to_excel(filename, index=False)
