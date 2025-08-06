@@ -12,6 +12,7 @@ EXCEL_MAX_ROWS = 1048576  # Excel row limit
 
 def select_files_and_folders(title):
     root = tk.Tk()
+    root.attributes("-topmost", True)
     root.withdraw()
     root.attributes("-topmost", True)  # ✅ Always on top
 
@@ -104,11 +105,11 @@ def process_master_file(master_file, merged_epcs, output_folder, summary_rows, t
             return
 
         df["EPC"] = df["EPC"].astype(str).str.strip()
-        df["Found"] = df["EPC"].apply(lambda x: "✅" if x in merged_epcs else "")
+        df["Found"] = df["EPC"].apply(lambda x: "Yes" if x in merged_epcs else "No")
         df["Location Found"] = df["EPC"].apply(lambda x: merged_epcs[x]["Location"] if x in merged_epcs else "")
         df["Reader Used"] = df["EPC"].apply(lambda x: merged_epcs[x]["Reader"] if x in merged_epcs else "")
 
-        found_count = df["Found"].eq("✅").sum()
+        found_count = df["Found"].eq("Yes").sum()
         total_rows = len(df)
         percent_found = (found_count / total_rows) * 100 if total_rows else 0
 
@@ -167,6 +168,7 @@ def compare_epcs(merged_files, master_files):
 
     # Ask user for mode: Merge or Per-file
     root = tk.Tk()
+    root.attributes("-topmost", True)
     root.withdraw()
     root.attributes("-topmost", True)
     merge_choice = messagebox.askyesno(
@@ -198,11 +200,12 @@ def compare_epcs(merged_files, master_files):
                     continue
 
                 df["EPC"] = df["EPC"].astype(str).str.strip()
-                df["Found"] = df["EPC"].apply(lambda x: "✅" if x in merged_epcs else "")
+                df["Found"] = df["EPC"].apply(lambda x: "Yes" if x in merged_epcs else "No")
+
                 df["Location Found"] = df["EPC"].apply(lambda x: merged_epcs[x]["Location"] if x in merged_epcs else "")
                 df["Reader Used"] = df["EPC"].apply(lambda x: merged_epcs[x]["Reader"] if x in merged_epcs else "")
 
-                found_in_file = df["Found"].eq("✅").sum()
+                found_in_file = df["Found"].eq("Yes").sum()
                 totals["total_rows"] += len(df)
                 totals["found_rows"] += found_in_file
 
@@ -249,7 +252,24 @@ def compare_epcs(merged_files, master_files):
     messagebox.showinfo(
         "Comparison Complete",
         f"Comparison complete!\nResults saved to:\n{output_folder}"
-    )
+    ) 
+
+def show_loading_popup():
+    popup = tk.Toplevel()
+    popup.title("Processing...")
+    popup.geometry("300x100")
+    popup.configure(bg="white")
+    popup.attributes("-topmost", True)
+
+    label = tk.Label(popup, text="Comparing EPCs, please wait...", font=("Segoe UI", 11), bg="white")
+    label.pack(pady=20)
+
+    popup.update()
+    return popup
+
+def close_loading_popup(popup):
+    if popup:
+        popup.destroy()
 
 if __name__ == "__main__":
     print("📂 EPC Master Comparison Tool v9")
@@ -266,4 +286,14 @@ if __name__ == "__main__":
         print("❌ No master database files selected.")
         exit()
 
-    compare_epcs(merged_files, master_files)
+    # Start loading popup
+    root = tk.Tk()
+    root.withdraw()
+    loading_popup = show_loading_popup()
+    root.update()
+
+    try:
+        compare_epcs(merged_files, master_files)
+    finally:
+        close_loading_popup(loading_popup)
+
